@@ -1,9 +1,11 @@
 package com.wineofzamorakhelper;
 
+import com.google.inject.Provides;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
@@ -34,6 +36,8 @@ public class WineOfZamorakHelperPlugin extends Plugin {
     private ItemManager itemManager;
     @Inject
     private InfoBoxManager infoBoxManager;
+    @Inject
+    private WineOfZamorakHelperConfig config;
 
     private WineCounterBox wineCounterBox;
 
@@ -60,10 +64,16 @@ public class WineOfZamorakHelperPlugin extends Plugin {
         }
     }
 
+    @Provides
+    WineOfZamorakHelperConfig provideConfig(ConfigManager configManager) {
+        return configManager.getConfig(WineOfZamorakHelperConfig.class);
+    }
+
     @Subscribe
     public void onNpcSpawned(NpcSpawned event) {
         if (MONK_OF_ZAMORAK_NPCS_IDS.contains(event.getNpc().getId())) {
             MONKS_OF_ZAMORAK_NPCS.add(event.getNpc());
+            updateWineCounterBox();
         }
     }
 
@@ -71,6 +81,7 @@ public class WineOfZamorakHelperPlugin extends Plugin {
     public void onNpcDespawned(NpcDespawned event) {
         if (MONK_OF_ZAMORAK_NPCS_IDS.contains(event.getNpc().getId())) {
             MONKS_OF_ZAMORAK_NPCS.remove(event.getNpc());
+            updateWineCounterBox();
         }
     }
 
@@ -112,13 +123,7 @@ public class WineOfZamorakHelperPlugin extends Plugin {
             return;
         }
 
-        if (wineCounterBox != null) {
-            infoBoxManager.removeInfoBox(wineCounterBox);
-        }
-
-        BufferedImage wineImage = itemManager.getImage(WINE_OF_ZAMORAK_ITEM_ID);
-        wineCounterBox = new WineCounterBox(client, WINE_OF_ZAMORAK_ITEM_ID, wineImage, this);
-        infoBoxManager.addInfoBox(wineCounterBox);
+        updateWineCounterBox();
     }
 
     @Subscribe
@@ -135,6 +140,13 @@ public class WineOfZamorakHelperPlugin extends Plugin {
                 resetRespawnTimers();
                 resetRespawnMeasurement();
                 break;
+        }
+    }
+
+    @Subscribe
+    public void onConfigChanged(net.runelite.client.events.ConfigChanged event) {
+        if (event.getGroup().equals("wineofzamorakhelper")) {
+            updateWineCounterBox();
         }
     }
 
@@ -155,5 +167,18 @@ public class WineOfZamorakHelperPlugin extends Plugin {
     private void resetRespawnMeasurement() {
         measuredRespawnSeconds = null;
         despawnTimes.clear();
+    }
+
+    private void updateWineCounterBox() {
+        if (wineCounterBox != null) {
+            infoBoxManager.removeInfoBox(wineCounterBox);
+            wineCounterBox = null;
+        }
+
+        if (config.showWineCounterBox() && isMonkOfZamorakNearby()) {
+            BufferedImage wineImage = itemManager.getImage(WINE_OF_ZAMORAK_ITEM_ID);
+            wineCounterBox = new WineCounterBox(client, WINE_OF_ZAMORAK_ITEM_ID, wineImage, this);
+            infoBoxManager.addInfoBox(wineCounterBox);
+        }
     }
 }
