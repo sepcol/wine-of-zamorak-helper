@@ -57,6 +57,8 @@ public class WineOfZamorakHelperPlugin extends Plugin {
     protected void shutDown() {
         overlayManager.remove(overlay);
         activeItems.clear();
+        despawnTimes.clear();
+        MONKS_OF_ZAMORAK_NPCS.clear();
 
         if (wineCounterBox != null) {
             infoBoxManager.removeInfoBox(wineCounterBox);
